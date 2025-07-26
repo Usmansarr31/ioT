@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Données capteurs</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      font-family: Arial;
+      background-color: #f4f4f4;
+      padding: 20px;
+    }
+
+    h1 {
+      text-align: center;
+    }
+
+    .charts {
+      display: flex;
+      flex-direction: column;
+      gap: 30px;
+      max-width: 800px;
+      margin: auto;
+    }
+
+    canvas {
+      background-color: white;
+      border: 1px solid #ccc;
+      border-radius: 10px;
+      padding: 10px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Données en temps réel</h1>
+  <div class="charts">
+    <canvas id="tempChart"></canvas>
+    <canvas id="humChart"></canvas>
+    <canvas id="distChart"></canvas>
+  </div>
+
+  <script>
+    const tempCtx = document.getElementById('tempChart').getContext('2d');
+    const humCtx = document.getElementById('humChart').getContext('2d');
+    const distCtx = document.getElementById('distChart').getContext('2d');
+
+    const createChart = (ctx, label, color) => new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: [],
+        datasets: [{
+          label: label,
+          data: [],
+          borderColor: color,
+          fill: false,
+          tension: 0.1
+        }]
+      },
+      options: {
+        animation: false,
+        scales: {
+          x: { title: { display: true, text: "Heure" } },
+          y: { beginAtZero: true }
+        }
+      }
+    });
+
+    const tempChart = createChart(tempCtx, "Température (°C)", "red");
+    const humChart = createChart(humCtx, "Humidité (%)", "blue");
+    const distChart = createChart(distCtx, "Distance (cm)", "green");
+
+    function updateChart(chart, value) {
+      const time = new Date().toLocaleTimeString();
+      chart.data.labels.push(time);
+      chart.data.datasets[0].data.push(value);
+
+      // Garde seulement les 20 dernières valeurs
+      if (chart.data.labels.length > 20) {
+        chart.data.labels.shift();
+        chart.data.datasets[0].data.shift();
+      }
+
+      chart.update();
+    }
+
+    async function fetchData() {
+      try {
+        const res = await fetch('/api/data');
+        const data = await res.json();
+        updateChart(tempChart, data.temperature ?? 0);
+        updateChart(humChart, data.humidity ?? 0);
+        updateChart(distChart, data.distance ?? 0);
+      } catch (err) {
+        console.error("Erreur de récupération des données", err);
+      }
+    }
+
+    setInterval(fetchData, 2000);
+    fetchData();
+  </script>
+</body>
+</html>
